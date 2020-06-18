@@ -1466,7 +1466,7 @@ static void read_usb_type(struct smbchg_chip *chip, char **usb_type_name,
 static enum power_supply_type get_usb_pd_supply_type(struct smbchg_chip *chip)
 {
    union power_supply_propval pval = {0, };
-   int rc;
+   int rc = -EINVAL;
 
    if (!chip->ctype_psy) {
        chip->ctype_psy = power_supply_get_by_name("usb_pd");
@@ -1738,6 +1738,18 @@ static int get_prop_batt_current_now(struct smbchg_chip *chip)
 		ua = DEFAULT_BATT_CURRENT_NOW;
 	}
 	return ua;
+}
+#define DEFAULT_BATT_FULL_CHG_CAPACITY	0
+static int get_prop_batt_full_charge(struct smbchg_chip *chip)
+{
+	int bfc, rc;
+
+	rc = get_property_from_fg(chip, POWER_SUPPLY_PROP_CHARGE_FULL, &bfc);
+	if (rc) {
+		pr_smb(PR_STATUS, "Couldn't get charge_full rc = %d\n", rc);
+		bfc = DEFAULT_BATT_FULL_CHG_CAPACITY;
+	}
+	return bfc;
 }
 
 #define DEFAULT_BATT_VOLTAGE_NOW	0
@@ -7450,6 +7462,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 #ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
 	POWER_SUPPLY_PROP_ENABLE_EVP_CHG,
 #endif
+	POWER_SUPPLY_PROP_CHARGE_FULL,
 	POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED,
@@ -7482,7 +7495,6 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 		rc = vote(chip->dc_suspend_votable, USER_EN_VOTER,
 				!val->intval, 0);
 		chip->chg_enabled = val->intval;
-		power_supply_changed(chip->usb_psy);
 		schedule_work(&chip->usb_set_online_work);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY:
@@ -7684,6 +7696,9 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = lge_battery_check();
 		break;
 #endif
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+		val->intval = get_prop_batt_full_charge(chip);
+		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = get_prop_batt_temp(chip);
 		break;
@@ -9975,7 +9990,7 @@ static int smbchg_probe(struct spmi_device *spmi)
 	int rc;
 	struct smbchg_chip *chip;
 	struct power_supply *usb_psy;
-	struct qpnp_vadc_chip *vadc_dev;
+	struct qpnp_vadc_chip *vadc_dev = NULL;
 
 #ifdef CONFIG_LGE_PM_CHARGING_CONTROLLER
 	pr_smb(PR_LGE, "smbchg_probe start for alice\n");
@@ -10519,3 +10534,4 @@ module_exit(smbchg_exit);
 MODULE_DESCRIPTION("QPNP SMB Charger");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:qpnp-smbcharger");
+

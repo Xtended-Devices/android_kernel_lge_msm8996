@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2017 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2019 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -7087,7 +7087,7 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 #ifdef CONFIG_LGE_PM_PARALLEL_CHARGING
 	cancel_delayed_work_sync(&chip->battchg_protect_work);
 #endif
-	smbchg_change_usb_supply_type(chip, POWER_SUPPLY_TYPE_USB);
+	smbchg_change_usb_supply_type(chip, POWER_SUPPLY_TYPE_UNKNOWN);
 
 	if (chip->parallel.use_parallel_aicl) {
 		complete_all(&chip->hvdcp_det_done);
